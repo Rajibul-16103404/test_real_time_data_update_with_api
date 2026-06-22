@@ -6,6 +6,7 @@ use App\Models\ChatRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
@@ -42,18 +43,43 @@ class UserController extends Controller
                     }
                 }
 
+                $lastSeen = Cache::get('user-last-seen-'.$user->id);
+                $isOnline = $lastSeen ? $lastSeen->greaterThanOrEqualTo(now()->subMinutes(5)) : false;
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'status' => $status,
                     'request_id' => $requestId,
+                    'is_online' => $isOnline,
+                    'last_seen' => $lastSeen ? $lastSeen->toIso8601String() : null,
                 ];
             });
 
         return response()->json([
             'success' => true,
             'users' => $users,
+        ]);
+    }
+
+    /**
+     * Get a specific user's online activity status.
+     */
+    public function activity(User $user): JsonResponse
+    {
+        $lastSeen = Cache::get('user-last-seen-'.$user->id);
+        $isOnline = false;
+
+        if ($lastSeen) {
+            $isOnline = $lastSeen->greaterThanOrEqualTo(now()->subMinutes(5));
+        }
+
+        return response()->json([
+            'success' => true,
+            'user_id' => $user->id,
+            'is_online' => $isOnline,
+            'last_seen' => $lastSeen ? $lastSeen->toIso8601String() : null,
         ]);
     }
 }

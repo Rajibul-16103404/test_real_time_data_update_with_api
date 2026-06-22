@@ -122,4 +122,40 @@ class ChatRequestController extends Controller
             'message' => 'Chat request deleted successfully.',
         ]);
     }
+
+    /**
+     * Get incoming pending chat requests.
+     */
+    public function incoming(Request $request): JsonResponse
+    {
+        $requests = ChatRequest::query()
+            ->where('receiver_id', Auth::id())
+            ->where('status', 'pending')
+            ->with('sender')
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'requests' => $requests,
+        ]);
+    }
+
+    /**
+     * Get outgoing pending chat requests.
+     */
+    public function outgoing(Request $request): JsonResponse
+    {
+        $requests = ChatRequest::query()
+            ->where('sender_id', Auth::id())
+            ->where('status', 'pending')
+            ->with('receiver')
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'requests' => $requests,
+        ]);
+    }
 }

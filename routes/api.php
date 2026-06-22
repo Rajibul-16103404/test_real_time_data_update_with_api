@@ -26,8 +26,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User directory & status
     Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
+    Route::get('/users/{user}/activity', [UserController::class, 'activity'])->name('api.users.activity');
 
     // Chat requests
+    Route::get('/chat-requests/incoming', [ChatRequestController::class, 'incoming'])->name('api.chat-requests.incoming');
+    Route::get('/chat-requests/outgoing', [ChatRequestController::class, 'outgoing'])->name('api.chat-requests.outgoing');
     Route::post('/chat-requests', [ChatRequestController::class, 'store'])->name('api.chat-requests.store');
     Route::post('/chat-requests/{chatRequest}/accept', [ChatRequestController::class, 'accept'])->name('api.chat-requests.accept');
     Route::post('/chat-requests/{chatRequest}/decline', [ChatRequestController::class, 'decline'])->name('api.chat-requests.decline');

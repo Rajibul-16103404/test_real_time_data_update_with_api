@@ -149,6 +149,46 @@ class PrivateChatTest extends TestCase
     }
 
     /**
+     * Test retrieving incoming and outgoing pending chat requests.
+     */
+    public function test_user_can_retrieve_incoming_and_outgoing_chat_requests(): void
+    {
+        $sender = User::factory()->create();
+        $receiver = User::factory()->create();
+
+        // Create a pending request
+        ChatRequest::create([
+            'sender_id' => $sender->id,
+            'receiver_id' => $receiver->id,
+            'status' => 'pending',
+        ]);
+
+        // Verify incoming for receiver
+        $responseIncoming = $this->actingAs($receiver)
+            ->getJson(route('api.chat-requests.incoming'));
+
+        $responseIncoming->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ])
+            ->assertJsonCount(1, 'requests');
+
+        $this->assertEquals($sender->id, $responseIncoming->json('requests.0.sender_id'));
+
+        // Verify outgoing for sender
+        $responseOutgoing = $this->actingAs($sender)
+            ->getJson(route('api.chat-requests.outgoing'));
+
+        $responseOutgoing->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ])
+            ->assertJsonCount(1, 'requests');
+
+        $this->assertEquals($receiver->id, $responseOutgoing->json('requests.0.receiver_id'));
+    }
+
+    /**
      * Test accepting connection request.
      */
     public function test_user_can_accept_chat_request_and_broadcasts(): void
@@ -331,5 +371,42 @@ class PrivateChatTest extends TestCase
         $messages = $response->json('messages');
         $this->assertEquals('First message', $messages[0]['message']);
         $this->assertEquals('Second reply', $messages[1]['message']);
+    }
+
+    /**
+     * Test tracking and retrieving user active status.
+     */
+    public function test_user_activity_tracking(): void
+    {
+        $user = User::factory()->create();
+        $targetUser = User::factory()->create();
+
+        // 1. Initially user has no activity
+        $response1 = $this->actingAs($user)
+            ->getJson(route('api.users.activity', $targetUser));
+
+        $response1->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'user_id' => $targetUser->id,
+                'is_online' => false,
+                'last_seen' => null,
+            ]);
+
+        // 2. Target user performs an action
+        $this->actingAs($targetUser)
+            ->getJson(route('api.users.index'));
+
+        // 3. Activity status is updated
+        $response2 = $this->actingAs($user)
+            ->getJson(route('api.users.activity', $targetUser));
+
+        $response2->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'user_id' => $targetUser->id,
+                'is_online' => true,
+            ])
+            ->assertJsonStructure(['last_seen']);
     }
 }

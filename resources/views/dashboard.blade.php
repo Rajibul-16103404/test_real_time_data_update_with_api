@@ -219,6 +219,7 @@
         let usersCache = [];
         let activeChatUserId = null;
         let authUserId = null;
+        let onlineUsers = new Set();
         
         // Console tray logic
         let consoleOpen = false;
@@ -245,6 +246,20 @@
                 }
             });
             renderUsersList();
+        }
+
+        // Update Active Partner Status in Chat Header
+        function updateActivePartnerStatus() {
+            if (!activeChatUserId) return;
+            
+            const isOnline = onlineUsers.has(activeChatUserId);
+            const statusText = document.getElementById('chat-header-status');
+            
+            if (isOnline) {
+                statusText.innerHTML = `<span class="inline-flex items-center gap-1 text-emerald-400 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>online</span>`;
+            } else {
+                statusText.innerHTML = `<span class="inline-flex items-center gap-1 text-gray-500"><span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>offline</span>`;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -389,10 +404,16 @@
                         `;
                     }
 
+                    const isOnline = onlineUsers.has(user.id);
+                    const statusDot = isOnline 
+                        ? `<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-[#0b0a12] shadow-sm"></span>` 
+                        : '';
+
                     userDiv.innerHTML = `
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+                            <div class="relative w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
                                 ${user.name.substring(0,2).toUpperCase()}
+                                ${statusDot}
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-xs font-bold text-white truncate">${escapeHtml(user.name)}</p>
@@ -480,6 +501,8 @@
                 activeChatUserId = userId;
                 chatHeaderName.textContent = name;
                 chatHeaderAvatar.textContent = name.substring(0, 2).toUpperCase();
+                
+                updateActivePartnerStatus();
                 
                 chatWelcomeState.classList.add('hidden');
                 chatActiveState.classList.remove('hidden');
@@ -603,6 +626,30 @@
                         wsDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
                         wsText.textContent = 'WS Connected';
                     }
+
+                    // Join Chat Presence Channel to track online statuses
+                    window.Echo.join('chat')
+                        .here((users) => {
+                            users.forEach(u => onlineUsers.add(u.id));
+                            addLog(`[Presence] Joined channel. ${users.length} users online.`, 'info');
+                            renderUsersList();
+                            updateActivePartnerStatus();
+                        })
+                        .joining((user) => {
+                            onlineUsers.add(user.id);
+                            addLog(`[Presence] ${user.name} came online.`, 'success');
+                            renderUsersList();
+                            updateActivePartnerStatus();
+                        })
+                        .leaving((user) => {
+                            onlineUsers.delete(user.id);
+                            addLog(`[Presence] ${user.name} went offline.`, 'info');
+                            renderUsersList();
+                            updateActivePartnerStatus();
+                        })
+                        .error((error) => {
+                            addLog(`[Presence] Failed to join: ${error.message}`, 'error');
+                        });
 
                     // Listen to Private User channel
                     window.Echo.private(`user.${authUserId}`)
