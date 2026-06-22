@@ -1,14 +1,23 @@
 <?php
 
-use App\Http\Controllers\CounterController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::prefix('api')->group(function () {
-    Route::get('/counter', [CounterController::class, 'show'])->name('api.counter.show');
-    Route::post('/counter/increment', [CounterController::class, 'increment'])->name('api.counter.increment');
-    Route::post('/counter/decrement', [CounterController::class, 'decrement'])->name('api.counter.decrement');
+// Authentication Guest Routes
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+});
+
+// Authenticated Web Views
+Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
 });
