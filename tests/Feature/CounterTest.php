@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Events\CounterUpdated;
 use App\Models\Counter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class CounterTest extends TestCase
@@ -32,10 +34,12 @@ class CounterTest extends TestCase
     }
 
     /**
-     * Test incrementing the counter value.
+     * Test incrementing the counter value and broadcasting.
      */
     public function test_can_increment_counter_value(): void
     {
+        Event::fake();
+
         // Seed default counter
         Counter::create(['name' => 'default', 'value' => 5]);
 
@@ -52,13 +56,19 @@ class CounterTest extends TestCase
             'name' => 'default',
             'value' => 6,
         ]);
+
+        Event::assertDispatched(CounterUpdated::class, function (CounterUpdated $event) {
+            return $event->value === 6;
+        });
     }
 
     /**
-     * Test decrementing the counter value.
+     * Test decrementing the counter value and broadcasting.
      */
     public function test_can_decrement_counter_value(): void
     {
+        Event::fake();
+
         // Seed default counter
         Counter::create(['name' => 'default', 'value' => 10]);
 
@@ -75,17 +85,9 @@ class CounterTest extends TestCase
             'name' => 'default',
             'value' => 9,
         ]);
-    }
 
-    /**
-     * Test getting the counter stream response.
-     */
-    public function test_can_get_counter_stream(): void
-    {
-        $response = $this->get(route('api.counter.stream'));
-
-        $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'text/event-stream; charset=utf-8');
-        $response->assertHeader('Cache-Control', 'no-cache, private');
+        Event::assertDispatched(CounterUpdated::class, function (CounterUpdated $event) {
+            return $event->value === 9;
+        });
     }
 }

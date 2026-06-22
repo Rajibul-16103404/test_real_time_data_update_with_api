@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>Real-Time Counter API Console</title>
+    <title>Real-Time Counter WebSocket Console</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,13 +57,13 @@
                     <h1 class="text-sm font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                         Antigravity Engine
                     </h1>
-                    <p class="text-[10px] text-gray-500 font-medium tracking-wider uppercase">Real-Time Data Console</p>
+                    <p class="text-[10px] text-gray-500 font-medium tracking-wider uppercase">Laravel Reverb WebSockets</p>
                 </div>
             </div>
             <div class="flex items-center gap-4">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-300">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    API Active
+                    <span id="socket-status-dot" class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    <span id="socket-status-text">WS Offline</span>
                 </span>
             </div>
         </div>
@@ -80,10 +80,10 @@
                 <!-- Status Badge -->
                 <div id="status-badge" class="mb-6 inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-violet-500/10 border border-violet-500/20 text-violet-300 transition-all duration-300">
                     <span id="status-dot" class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
-                    <span id="status-text">Connecting to API...</span>
+                    <span id="status-text">Loading initial value...</span>
                 </div>
 
-                <h2 class="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-2">Live Database Counter</h2>
+                <h2 class="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-2">Live WebSocket Counter</h2>
 
                 <!-- Counter Display -->
                 <div class="relative h-44 flex items-center justify-center select-none w-full">
@@ -122,7 +122,7 @@
                 <!-- Database stats -->
                 <div class="w-full border-t border-white/5 mt-8 pt-6 flex justify-between text-xs text-gray-500 font-semibold px-2">
                     <span>Database ID: <span class="text-gray-400 code-font">default</span></span>
-                    <span>Status: <span class="text-emerald-400">Live Update</span></span>
+                    <span>Broker: <span class="text-violet-400 font-bold">Reverb</span></span>
                 </div>
             </div>
         </div>
@@ -130,11 +130,11 @@
         <!-- Terminal Console Logger -->
         <div class="w-full max-w-md mt-6 rounded-xl bg-black/40 border border-white/5 backdrop-blur-md px-5 py-4 shadow-xl">
             <div class="flex items-center justify-between mb-2 pb-2 border-b border-white/5">
-                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Console Operations Log</span>
-                <span class="w-2 h-2 rounded-full bg-emerald-500/70"></span>
+                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">WebSocket Operations Log</span>
+                <span class="w-2 h-2 rounded-full bg-violet-500/70"></span>
             </div>
             <div id="console-logs" class="text-[11px] code-font text-gray-400 h-28 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 pr-2">
-                <div class="text-violet-400/80">[system] Initializing database-sync listener...</div>
+                <div class="text-violet-400/80">[system] Connecting websocket clients...</div>
             </div>
         </div>
     </main>
@@ -146,11 +146,15 @@
                 © {{ date('Y') }} Antigravity Platform. All rights reserved.
             </div>
             <div class="flex gap-4">
-                <span class="text-gray-500">Framework: v{{ app()->version() }}</span>
+                <span class="text-gray-500">Broadcaster: Reverb</span>
                 <span class="text-gray-500">PHP: v8.4</span>
             </div>
         </div>
     </footer>
+
+    <!-- WebSocket Client Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
 
     <!-- Script logic -->
     <script>
@@ -161,6 +165,8 @@
             const statusBadge = document.getElementById('status-badge');
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
+            const wsDot = document.getElementById('socket-status-dot');
+            const wsText = document.getElementById('socket-status-text');
             const logConsole = document.getElementById('console-logs');
 
             // Add console logs in UI
@@ -201,10 +207,10 @@
                 btnDec.disabled = disabled;
             }
 
-            // Fetch counter from API
+            // Fetch initial counter from API
             async function fetchCounter() {
                 setStatus('syncing');
-                addLog('GET /api/counter -> Requesting value');
+                addLog('GET /api/counter -> Fetching initial value');
                 try {
                     const res = await fetch('/api/counter');
                     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -212,10 +218,6 @@
                     
                     if (data.success) {
                         counterEl.textContent = data.value;
-                        // Add scaling animation
-                        counterEl.classList.remove('scale-95');
-                        counterEl.classList.add('scale-100');
-                        
                         setStatus('success');
                         setControlsDisabled(false);
                         addLog(`GET /api/counter -> 200 OK (value: ${data.value})`, 'success');
@@ -224,7 +226,7 @@
                     }
                 } catch (err) {
                     setStatus('error');
-                    addLog(`GET /api/counter -> FAIL (${err.message})`, 'error');
+                    addLog('GET /api/counter -> FAIL (' + err.message + ')', 'error');
                 }
             }
 
@@ -232,19 +234,16 @@
             async function updateCounter(action) {
                 setStatus('syncing');
                 setControlsDisabled(true);
-                addLog(`POST /api/counter/${action} -> Sending request`);
+                addLog(`POST /api/counter/${action} -> Requesting change`);
                 
-                // Visual feedback: shrink slightly during transmission
                 counterEl.classList.remove('scale-100');
                 counterEl.classList.add('scale-95', 'opacity-80', 'transition-all', 'duration-150');
 
                 try {
-                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                     const res = await fetch(`/api/counter/${action}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token,
                             'Accept': 'application/json'
                         }
                     });
@@ -253,13 +252,14 @@
                     const data = await res.json();
 
                     if (data.success) {
+                        // Optimistic update locally
                         counterEl.textContent = data.value;
                         counterEl.classList.remove('scale-95', 'opacity-80');
                         counterEl.classList.add('scale-100');
 
                         setStatus('success');
                         setControlsDisabled(false);
-                        addLog(`POST /api/counter/${action} -> 200 OK (updated: ${data.value})`, 'success');
+                        addLog(`POST /api/counter/${action} -> 200 OK`, 'success');
                     } else {
                         throw new Error('Response success flag is false');
                     }
@@ -267,14 +267,73 @@
                     setStatus('error');
                     setControlsDisabled(false);
                     counterEl.classList.remove('scale-95', 'opacity-80');
-                    addLog(`POST /api/counter/${action} -> FAIL (${err.message})`, 'error');
+                    addLog(`POST /api/counter/${action} -> FAIL (` + err.message + ')', 'error');
                 }
             }
 
             btnInc.addEventListener('click', () => updateCounter('increment'));
             btnDec.addEventListener('click', () => updateCounter('decrement'));
 
-            // Initial fetch
+            // Initialize Laravel Echo for Reverb WebSockets
+            try {
+                window.Pusher = Pusher;
+                
+                // Use current location hostname dynamically to support localhost, local IPs, and proxies
+                const wsHost = window.location.hostname;
+                const wsPort = {{ env('REVERB_PORT', 8080) }};
+
+                addLog(`[WS] Initializing connection to ws://${wsHost}:${wsPort}...`);
+
+                window.Echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: '{{ env("REVERB_APP_KEY") }}',
+                    wsHost: wsHost,
+                    wsPort: wsPort,
+                    wssPort: wsPort,
+                    forceTLS: false,
+                    enabledTransports: ['ws', 'wss'],
+                });
+
+                // Listen to connection status events
+                window.Echo.connector.pusher.connection.bind('connected', () => {
+                    wsDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
+                    wsText.textContent = 'WS Connected';
+                    addLog('[WS] Connection established successfully', 'success');
+                });
+
+                window.Echo.connector.pusher.connection.bind('disconnected', () => {
+                    wsDot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+                    wsText.textContent = 'WS Offline';
+                    addLog('[WS] Connection disconnected', 'error');
+                });
+
+                window.Echo.connector.pusher.connection.bind('error', (err) => {
+                    addLog(`[WS] Connection error: ${err.message || 'unknown'}`, 'error');
+                });
+
+                // Listen on public channel for live broadcast updates
+                window.Echo.channel('counter')
+                    .listen('CounterUpdated', (e) => {
+                        addLog(`[Broadcast] Received CounterUpdated (value: ${e.value})`, 'info');
+                        
+                        // Dynamic value updating and micro-animation
+                        counterEl.textContent = e.value;
+                        counterEl.classList.remove('scale-95');
+                        counterEl.classList.add('scale-105');
+                        
+                        setTimeout(() => {
+                            counterEl.classList.remove('scale-105');
+                            counterEl.classList.add('scale-100');
+                        }, 150);
+
+                        setStatus('success');
+                    });
+
+            } catch (e) {
+                addLog(`[WS] Failed to initialize Echo: ${e.message}`, 'error');
+            }
+
+            // Load initial state
             fetchCounter();
         });
     </script>
