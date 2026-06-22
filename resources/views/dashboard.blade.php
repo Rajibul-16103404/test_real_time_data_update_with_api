@@ -164,10 +164,6 @@
         © 2026 Antigravity Platform. All rights reserved.
     </footer>
 
-    <!-- WebSocket Client Dependencies -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
-
     <!-- Client-side logic -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -469,56 +465,52 @@
                 return temp.innerHTML;
             }
 
-            // Reverb WebSockets Initialize
+            // Reverb WebSockets Initialize via Vite
             try {
-                window.Pusher = Pusher;
-                const wsHost = window.location.hostname;
-                const wsPort = {{ env('REVERB_PORT', 8080) }};
+                if (window.Echo) {
+                    addLog('[WS] Reverb WebSockets active via compiled assets.', 'info');
 
-                addLog(`[WS] Initializing connection to ws://${wsHost}:${wsPort}...`);
-
-                window.Echo = new Echo({
-                    broadcaster: 'reverb',
-                    key: '{{ env("REVERB_APP_KEY") }}',
-                    wsHost: wsHost,
-                    wsPort: wsPort,
-                    wssPort: wsPort,
-                    forceTLS: false,
-                    enabledTransports: ['ws', 'wss'],
-                });
-
-                window.Echo.connector.pusher.connection.bind('connected', () => {
-                    wsDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
-                    wsText.textContent = 'WS Connected';
-                    addLog('[WS] Connected successfully', 'success');
-                });
-
-                window.Echo.connector.pusher.connection.bind('disconnected', () => {
-                    wsDot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
-                    wsText.textContent = 'WS Offline';
-                    addLog('[WS] Disconnected', 'error');
-                });
-
-                // Listen to Private User channel
-                window.Echo.private(`user.${authUserId}`)
-                    .listen('ChatRequestSent', (e) => {
-                        addLog(`[WS] Incoming chat invitation from "${e.sender.name}"`, 'info');
-                        fetchUsers();
-                    })
-                    .listen('ChatRequestAccepted', (e) => {
-                        addLog(`[WS] Connection invitation accepted by "${e.receiver.name}"!`, 'success');
-                        fetchUsers();
-                    })
-                    .listen('DirectMessageSent', (e) => {
-                        addLog(`[WS] New private message received`, 'info');
-                        if (activeChatUserId === e.sender_id) {
-                            appendMessage(e);
-                        } else {
-                            // Update sidebar statuses dynamically
-                            fetchUsers();
-                        }
+                    // Bind connection state handlers
+                    window.Echo.connector.pusher.connection.bind('connected', () => {
+                        wsDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
+                        wsText.textContent = 'WS Connected';
+                        addLog('[WS] Connected successfully', 'success');
                     });
 
+                    window.Echo.connector.pusher.connection.bind('disconnected', () => {
+                        wsDot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+                        wsText.textContent = 'WS Offline';
+                        addLog('[WS] Disconnected', 'error');
+                    });
+
+                    // Set initial state if already connected
+                    if (window.Echo.connector.pusher.connection.state === 'connected') {
+                        wsDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
+                        wsText.textContent = 'WS Connected';
+                    }
+
+                    // Listen to Private User channel
+                    window.Echo.private(`user.${authUserId}`)
+                        .listen('ChatRequestSent', (e) => {
+                            addLog(`[WS] Incoming chat invitation from "${e.sender.name}"`, 'info');
+                            fetchUsers();
+                        })
+                        .listen('ChatRequestAccepted', (e) => {
+                            addLog(`[WS] Connection invitation accepted by "${e.receiver.name}"!`, 'success');
+                            fetchUsers();
+                        })
+                        .listen('DirectMessageSent', (e) => {
+                            addLog(`[WS] New private message received`, 'info');
+                            if (activeChatUserId === e.sender_id) {
+                                appendMessage(e);
+                            } else {
+                                // Update sidebar statuses dynamically
+                                fetchUsers();
+                            }
+                        });
+                } else {
+                    addLog('[WS] Echo is not initialized on window object.', 'error');
+                }
             } catch (e) {
                 addLog(`[WS] Failed to initialize: ${e.message}`, 'error');
             }
