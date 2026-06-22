@@ -5,150 +5,179 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>Private Chat Console - Antigravity Engine</title>
+    <title>Chat Console - Antigravity Engine</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .code-font { font-family: 'JetBrains Mono', monospace; }
+        body { font-family: 'Outfit', sans-serif; }
+        .code-font { font-family: 'Fira Code', monospace; }
         
         @keyframes slide-up {
-            from { opacity: 0; transform: translateY(12px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .message-animate {
-            animation: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Hide scrollbars but keep functionality */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="h-full bg-[#0a0910] text-[#f4f4f7] flex flex-col justify-between antialiased overflow-x-hidden selection:bg-purple-500/30 selection:text-purple-200">
+<body class="h-full bg-[#08070d] text-[#f4f4f7] flex flex-col justify-between antialiased overflow-hidden selection:bg-purple-500/30 selection:text-purple-200">
     <!-- Gradient background mesh -->
-    <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-40">
-        <div class="absolute -top-[40%] -left-[20%] w-[80%] h-[80%] rounded-full bg-radial from-violet-600/30 via-transparent to-transparent blur-3xl"></div>
-        <div class="absolute -bottom-[40%] -right-[20%] w-[80%] h-[80%] rounded-full bg-radial from-pink-600/20 via-transparent to-transparent blur-3xl"></div>
+    <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-25">
+        <div class="absolute -top-[30%] -left-[10%] w-[60%] h-[60%] rounded-full bg-radial from-violet-600/35 via-transparent to-transparent blur-3xl"></div>
+        <div class="absolute -bottom-[30%] -right-[10%] w-[60%] h-[60%] rounded-full bg-radial from-pink-600/25 via-transparent to-transparent blur-3xl"></div>
     </div>
 
-    <!-- Header / Nav -->
-    <header class="w-full px-6 py-4 border-b border-white/5 bg-black/20 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-500 to-pink-500 shadow-lg shadow-violet-500/25">
-                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-sm font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                        Antigravity Engine
-                    </h1>
-                    <p class="text-[10px] text-gray-500 font-medium tracking-wider uppercase">Private Secure Messaging</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                <!-- User details -->
-                <div class="flex items-center gap-2 bg-white/5 border border-white/15 px-3 py-1.5 rounded-xl">
-                    <div class="w-2 h-2 rounded-full bg-violet-400"></div>
-                    <span class="text-xs font-semibold text-gray-200">{{ Auth::user()->name }}</span>
-                </div>
-
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-gray-300">
-                    <span id="socket-status-dot" class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                    <span id="socket-status-text" class="text-[10px]">WS Offline</span>
-                </span>
-
-                <!-- Logout -->
-                <form method="POST" action="/api/logout">
-                    @csrf
-                    <button type="submit" class="text-xs px-3 py-1.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors">
-                        Logout
-                    </button>
-                </form>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content Grid -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    <!-- Main Outer Container -->
+    <div class="h-full flex overflow-hidden w-full relative">
         
-        <!-- COLUMN 1: User Directory List & Logs (Col Span 4) -->
-        <div class="lg:col-span-4 flex flex-col gap-6 relative group">
-            <div class="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-violet-600 to-pink-600 opacity-15 blur"></div>
-            <div class="relative w-full h-full rounded-xl bg-[#12111a]/80 border border-white/10 backdrop-blur-xl px-4 py-5 shadow-xl flex flex-col justify-between gap-6 min-h-[500px]">
-                
-                <!-- Users Viewport -->
-                <div class="flex flex-col flex-1 min-h-0">
-                    <h3 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4 px-1">Directory</h3>
-                    <div id="users-directory" class="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar">
-                        <div class="text-center text-xs text-gray-500 py-8">Loading users...</div>
-                    </div>
-                </div>
-
-                <!-- WebSockets log, relocated here -->
-                <div class="w-full rounded-xl bg-black/40 border border-white/5 backdrop-blur-md px-4 py-3 shadow-md flex flex-col justify-between min-h-[160px] max-h-[220px]">
-                    <div class="flex items-center justify-between mb-2 pb-2 border-b border-white/5">
-                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">WebSocket Operations Log</span>
-                        <span class="w-1.5 h-1.5 rounded-full bg-violet-500/70"></span>
-                    </div>
-                    <div id="console-logs" class="flex-1 text-[9px] code-font text-gray-400 h-28 overflow-y-auto space-y-1 pr-1 no-scrollbar">
-                        <div class="text-violet-400/80">[system] Connecting websocket clients...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- COLUMN 2: Private Chat Room (Col Span 8) -->
-        <div class="lg:col-span-8 flex flex-col relative group">
-            <div class="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-pink-600 to-violet-600 opacity-20 blur"></div>
-            <div class="relative w-full h-full min-h-[500px] rounded-xl bg-[#12111a]/80 border border-white/10 backdrop-blur-xl px-6 py-6 shadow-xl flex flex-col justify-between">
-                
-                <!-- Active Chat Partner Header -->
-                <div class="border-b border-white/5 pb-4 mb-4 flex items-center justify-between">
-                    <div>
-                        <h4 id="chat-header-name" class="text-sm font-bold text-white">Select a Partner</h4>
-                        <p id="chat-header-status" class="text-[10px] text-gray-500">Pick a connected user from the directory to start</p>
-                    </div>
-                </div>
-
-                <!-- Chat Feed Viewport -->
-                <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3.5 pr-2 mb-4 no-scrollbar min-h-[320px]">
-                    <div class="h-full flex flex-col items-center justify-center text-center p-8">
-                        <div class="w-12 h-12 rounded-full bg-violet-600/10 flex items-center justify-center text-violet-400 mb-3 border border-violet-500/20">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <!-- SIDEBAR PANEL (Left - Width 350px) -->
+        <aside class="w-full sm:w-[360px] flex-shrink-0 border-r border-white/5 bg-[#0b0a12]/80 backdrop-blur-xl flex flex-col justify-between h-full relative z-20">
+            
+            <!-- Sidebar Header -->
+            <div class="px-5 py-4 border-b border-white/5 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 shadow-md">
+                            <svg class="h-4.5 w-4.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
                         </div>
-                        <p class="text-xs text-gray-400 font-semibold">Private Chat Room</p>
-                        <p class="text-[10px] text-gray-600 mt-1 max-w-[200px]">Send connection requests to other users and chat privately once accepted.</p>
+                        <h2 class="text-sm font-black tracking-tight text-white">Antigravity Chat</h2>
+                    </div>
+
+                    <!-- Connection Status Badge -->
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold bg-white/5 border border-white/10 text-gray-300">
+                        <span id="socket-status-dot" class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        <span id="socket-status-text">WS Offline</span>
+                    </span>
+                </div>
+
+                <!-- Search Input Bar -->
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </span>
+                    <input
+                        id="user-search"
+                        type="text"
+                        placeholder="Search users..."
+                        class="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/5 hover:border-white/10 focus:border-violet-500/50 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none transition-all duration-200"
+                    />
+                </div>
+
+                <!-- Tabs Switcher -->
+                <div class="grid grid-cols-3 gap-1 bg-black/35 p-1 rounded-xl border border-white/5">
+                    <button id="tab-chats" onclick="switchTab('chats')" class="py-1.5 rounded-lg text-[10px] font-bold text-center cursor-pointer transition-all duration-200 bg-violet-600 text-white">
+                        Chats
+                    </button>
+                    <button id="tab-discover" onclick="switchTab('discover')" class="py-1.5 rounded-lg text-[10px] font-bold text-center cursor-pointer transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5">
+                        Discover
+                    </button>
+                    <button id="tab-requests" onclick="switchTab('requests')" class="py-1.5 rounded-lg text-[10px] font-bold text-center cursor-pointer relative transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5">
+                        Requests
+                        <span id="requests-badge" class="hidden absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Content Viewport -->
+            <div id="users-directory" class="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 no-scrollbar">
+                <div class="text-center text-xs text-gray-500 py-12 animate-pulse">Loading directory...</div>
+            </div>
+
+            <!-- User profile footer -->
+            <div class="px-4 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-md">
+                        {{ substr(Auth::user()->name, 0, 2) }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-white truncate leading-none mb-0.5">{{ Auth::user()->name }}</p>
+                        <p class="text-[9px] text-gray-500 truncate leading-none">{{ Auth::user()->email }}</p>
                     </div>
                 </div>
 
+                <!-- Logout Action -->
+                <form method="POST" action="/api/logout">
+                    @csrf
+                    <button type="submit" class="p-2 rounded-lg border border-rose-500/20 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 cursor-pointer transition-all duration-150" title="Logout">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- MAIN ACTIVE WINDOW (Right) -->
+        <main class="flex-1 flex flex-col justify-between h-full bg-[#0c0b15]/40 relative z-10">
+            
+            <!-- Default Welcome State (When no active chat is opened) -->
+            <div id="chat-welcome-state" class="flex-1 flex flex-col items-center justify-center text-center p-8">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-violet-600/10 to-indigo-600/10 flex items-center justify-center text-violet-400 mb-4 border border-violet-500/15">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                </div>
+                <h3 class="text-sm font-bold text-white mb-1">Select a chat to begin</h3>
+                <p class="text-xs text-gray-500 max-w-[280px]">Select a connection from your sidebar or find new users to start messaging privately.</p>
+                <div class="mt-6 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/5 border border-white/10 text-gray-400">
+                    <svg class="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    E2E Socket Connection
+                </div>
+            </div>
+
+            <!-- Active Conversation Container (Hidden until user starts chat) -->
+            <div id="chat-active-state" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+                
+                <!-- Chat Partner Header -->
+                <div class="px-6 py-4 border-b border-white/5 bg-[#0b0a12]/40 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs" id="chat-header-avatar">
+                            U
+                        </div>
+                        <div>
+                            <h4 id="chat-header-name" class="text-xs font-bold text-white leading-none mb-0.5">Active User</h4>
+                            <p id="chat-header-status" class="text-[9px] text-gray-500 leading-none">Conversation secure & encrypted</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Messages Feed -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-6 space-y-4 no-scrollbar bg-black/10">
+                    <!-- Dynamic chat messages go here -->
+                </div>
+
                 <!-- Chat Input Form -->
-                <form id="chat-form" class="hidden flex gap-2.5 items-center pt-3 border-t border-white/5">
+                <form id="chat-form" class="px-6 py-4 border-t border-white/5 bg-[#0b0a12]/40 flex gap-3 items-center">
                     <input
                         id="input-message"
                         type="text"
                         required
                         maxlength="4000"
                         autocomplete="off"
-                        placeholder="Type a private message..."
-                        class="flex-1 bg-white/5 border border-white/10 hover:border-white/20 focus:border-violet-500/50 rounded-xl px-4 py-3.5 text-xs text-white placeholder-gray-500 focus:outline-none transition-all duration-200"
+                        placeholder="Type a message..."
+                        class="flex-1 bg-white/5 border border-white/5 hover:border-white/10 focus:border-violet-500/50 rounded-2xl px-5 py-3 text-xs text-white placeholder-gray-500 focus:outline-none transition-all duration-200"
                     />
                     <button
                         id="btn-send-message"
                         type="submit"
-                        class="flex items-center justify-center h-11 w-11 rounded-xl bg-gradient-to-tr from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 hover:scale-105 active:scale-95 transition-all duration-200 text-white cursor-pointer"
+                        class="flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 hover:scale-[1.03] active:scale-[0.97] transition-all duration-150 text-white shadow-md cursor-pointer"
                     >
                         <svg class="w-4 h-4 translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
@@ -156,53 +185,106 @@
                     </button>
                 </form>
             </div>
+        </main>
+    </div>
+
+    <!-- COLLAPSIBLE DEV OPERATIONS CONSOLE TRAY (Bottom Overlay) -->
+    <div id="console-tray" class="fixed bottom-0 left-0 right-0 z-50 bg-[#07060b] border-t border-white/10 transition-transform duration-300 transform translate-y-full flex flex-col h-[250px] shadow-2xl">
+        <div class="px-5 py-2.5 bg-black/40 flex items-center justify-between border-b border-white/5">
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+                <span class="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">WebSocket Terminal Log</span>
+            </div>
+            <button onclick="toggleConsole()" class="text-[9px] text-gray-500 hover:text-white font-bold cursor-pointer">
+                Close Terminal
+            </button>
         </div>
-    </main>
+        <div id="console-logs" class="flex-1 p-4 text-[10px] code-font text-gray-400 overflow-y-auto space-y-1.5 no-scrollbar bg-black/20">
+            <div class="text-violet-400/80">[system] Dev Terminal initialized.</div>
+        </div>
+    </div>
 
-    <!-- Footer -->
-    <footer class="w-full py-4 text-center text-[10px] text-gray-600 border-t border-white/5 bg-black/10">
-        © 2026 Antigravity Platform. All rights reserved.
-    </footer>
+    <!-- FLOATING CONSOLE TOGGLE BUTTON -->
+    <button onclick="toggleConsole()" class="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer shadow-lg text-[9px] font-extrabold uppercase tracking-wider">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+        </svg>
+        WS Console
+    </button>
 
-    <!-- Client-side logic -->
+    <!-- Script side handling -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const authUserId = {{ Auth::id() }};
-            let activeChatUserId = null;
-            let usersCache = [];
+        let activeTab = 'chats'; // 'chats', 'discover', 'requests'
+        let searchQuery = '';
+        let usersCache = [];
+        let activeChatUserId = null;
+        let authUserId = null;
+        
+        // Console tray logic
+        let consoleOpen = false;
+        function toggleConsole() {
+            const tray = document.getElementById('console-tray');
+            consoleOpen = !consoleOpen;
+            if (consoleOpen) {
+                tray.classList.remove('translate-y-full');
+            } else {
+                tray.classList.add('translate-y-full');
+            }
+        }
 
-            // UI Elements
+        // Switch Directory Tab
+        function switchTab(tab) {
+            activeTab = tab;
+            const tabs = ['chats', 'discover', 'requests'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    btn.className = 'py-1.5 rounded-lg text-[10px] font-bold text-center cursor-pointer transition-all duration-200 bg-violet-600 text-white';
+                } else {
+                    btn.className = 'py-1.5 rounded-lg text-[10px] font-bold text-center cursor-pointer transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5';
+                }
+            });
+            renderUsersList();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            authUserId = {{ Auth::id() }};
+            
+            // UI References
             const usersDirectory = document.getElementById('users-directory');
             const chatMessagesContainer = document.getElementById('chat-messages');
             const chatHeaderName = document.getElementById('chat-header-name');
-            const chatHeaderStatus = document.getElementById('chat-header-status');
+            const chatHeaderAvatar = document.getElementById('chat-header-avatar');
+            const chatWelcomeState = document.getElementById('chat-welcome-state');
+            const chatActiveState = document.getElementById('chat-active-state');
             const chatForm = document.getElementById('chat-form');
             const inputMessage = document.getElementById('input-message');
             const btnSendMessage = document.getElementById('btn-send-message');
+            const userSearchInput = document.getElementById('user-search');
+            const requestsBadge = document.getElementById('requests-badge');
 
             const wsDot = document.getElementById('socket-status-dot');
             const wsText = document.getElementById('socket-status-text');
             const logConsole = document.getElementById('console-logs');
 
-            // CSRF helper
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            // Logger helper
+            // Logger utility
             function addLog(message, type = 'info') {
                 const time = new Date().toLocaleTimeString().split(' ')[0];
                 const logEntry = document.createElement('div');
-                let colorClass = 'text-gray-400';
+                let colorClass = 'text-gray-500';
                 if (type === 'success') colorClass = 'text-emerald-400';
                 if (type === 'error') colorClass = 'text-rose-400';
                 if (type === 'info') colorClass = 'text-violet-400/80';
                 
                 logEntry.className = `${colorClass}`;
-                logEntry.innerHTML = `<span class="text-gray-600">[${time}]</span> ${message}`;
+                logEntry.innerHTML = `<span class="text-gray-700">[${time}]</span> ${message}`;
                 logConsole.appendChild(logEntry);
                 logConsole.scrollTop = logConsole.scrollHeight;
             }
 
-            // Fetch User Directory List
+            // Fetch User Directory
             async function fetchUsers() {
                 try {
                     const res = await fetch('/api/users', {
@@ -218,74 +300,114 @@
                 }
             }
 
-            // Render Users list with statuses
-            function renderUsersList() {
+            // Search filter handler
+            userSearchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                renderUsersList();
+            });
+
+            // Render Contacts List
+            window.renderUsersList = () => {
                 usersDirectory.innerHTML = '';
-                if (usersCache.length === 0) {
-                    usersDirectory.innerHTML = '<div class="text-center text-xs text-gray-600 py-6">No other users registered yet.</div>';
+                
+                // 1. Filter by Search Query
+                let filtered = usersCache;
+                if (searchQuery !== '') {
+                    filtered = filtered.filter(u => 
+                        u.name.toLowerCase().includes(searchQuery) || 
+                        u.email.toLowerCase().includes(searchQuery)
+                    );
+                }
+
+                // 2. Filter by Active Tab
+                let currentList = [];
+                if (activeTab === 'chats') {
+                    currentList = filtered.filter(u => u.status === 'accepted');
+                } else if (activeTab === 'discover') {
+                    currentList = filtered.filter(u => u.status === 'none');
+                } else if (activeTab === 'requests') {
+                    currentList = filtered.filter(u => u.status === 'pending_sent' || u.status === 'pending_received');
+                }
+
+                // Update Request Badge
+                const pendingInvites = usersCache.filter(u => u.status === 'pending_received').length;
+                if (pendingInvites > 0) {
+                    requestsBadge.textContent = pendingInvites;
+                    requestsBadge.classList.remove('hidden');
+                } else {
+                    requestsBadge.classList.add('hidden');
+                }
+
+                // Render Empty State
+                if (currentList.length === 0) {
+                    let message = 'No conversations started yet.';
+                    if (activeTab === 'discover') message = 'No new users to explore.';
+                    if (activeTab === 'requests') message = 'No pending chat requests.';
+                    
+                    usersDirectory.innerHTML = `<div class="text-center text-xs text-gray-600 py-10">${message}</div>`;
                     return;
                 }
 
-                usersCache.forEach(user => {
+                currentList.forEach(user => {
                     const userDiv = document.createElement('div');
                     userDiv.className = `p-3 rounded-xl border flex flex-col gap-2 transition-all duration-200 ${
                         activeChatUserId === user.id 
-                            ? 'bg-violet-600/10 border-violet-500/30' 
-                            : 'bg-white/5 border-white/5 hover:border-white/10'
+                            ? 'bg-violet-600/10 border-violet-500/20' 
+                            : 'bg-white/5 border-white/0 hover:border-white/5'
                     }`;
 
                     let actionHtml = '';
 
                     if (user.status === 'none') {
                         actionHtml = `
-                            <button onclick="sendRequest(${user.id})" class="w-full py-1 text-[10px] font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-lg cursor-pointer transition-colors">
+                            <button onclick="sendRequest(${user.id})" class="w-full py-1.5 text-[9px] font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-lg cursor-pointer transition-colors shadow-sm">
                                 Connect
                             </button>
                         `;
                     } else if (user.status === 'pending_sent') {
                         actionHtml = `
-                            <button disabled class="w-full py-1 text-[10px] font-bold bg-white/5 border border-white/10 text-gray-500 rounded-lg cursor-not-allowed">
-                                Request Pending
+                            <button disabled class="w-full py-1.5 text-[9px] font-bold bg-white/5 border border-white/10 text-gray-500 rounded-lg cursor-not-allowed">
+                                Outgoing Pending
                             </button>
                         `;
                     } else if (user.status === 'pending_received') {
                         actionHtml = `
                             <div class="flex gap-1.5 w-full">
-                                <button onclick="acceptRequest(${user.request_id})" class="flex-1 py-1 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg cursor-pointer transition-colors">
+                                <button onclick="acceptRequest(${user.request_id})" class="flex-1 py-1.5 text-[9px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg cursor-pointer transition-colors shadow-sm">
                                     Accept
                                 </button>
-                                <button onclick="declineRequest(${user.request_id})" class="flex-1 py-1 text-[10px] font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg cursor-pointer transition-colors">
+                                <button onclick="declineRequest(${user.request_id})" class="flex-1 py-1.5 text-[9px] font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg cursor-pointer transition-colors">
                                     Decline
                                 </button>
                             </div>
                         `;
                     } else if (user.status === 'accepted') {
                         actionHtml = `
-                            <button onclick="startChat(${user.id}, '${escapeHtml(user.name)}')" class="w-full py-1 text-[10px] font-bold bg-violet-500/10 border border-violet-500/30 hover:bg-violet-500/20 text-violet-300 rounded-lg cursor-pointer transition-all">
-                                ${activeChatUserId === user.id ? 'Active Chat' : 'Open Chat'}
+                            <button onclick="startChat(${user.id}, '${escapeHtml(user.name)}')" class="w-full py-1.5 text-[9px] font-bold bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-300 rounded-lg cursor-pointer transition-all">
+                                ${activeChatUserId === user.id ? 'Open Chat' : 'Chat'}
                             </button>
                         `;
                     }
 
                     userDiv.innerHTML = `
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-pink-500 text-white flex items-center justify-center font-bold text-xs">
-                                ${user.name.charAt(0).toUpperCase()}
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+                                ${user.name.substring(0,2).toUpperCase()}
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-xs font-bold text-white truncate">${escapeHtml(user.name)}</p>
                                 <p class="text-[9px] text-gray-500 truncate">${escapeHtml(user.email)}</p>
                             </div>
                         </div>
-                        <div class="pt-1">${actionHtml}</div>
+                        <div class="pt-0.5">${actionHtml}</div>
                     `;
                     usersDirectory.appendChild(userDiv);
                 });
-            }
+            };
 
-            // Connection actions
+            // Actions Handlers
             window.sendRequest = async (receiverId) => {
-                addLog(`Sending chat request to user #${receiverId}...`);
+                addLog(`Sending connection request to user #${receiverId}...`);
                 try {
                     const res = await fetch('/api/chat-requests', {
                         method: 'POST',
@@ -298,7 +420,7 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        addLog('Chat request sent successfully', 'success');
+                        addLog('Request sent successfully', 'success');
                         fetchUsers();
                     } else {
                         addLog(data.message || 'Failed to send request', 'error');
@@ -342,7 +464,7 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        addLog('Request declined/deleted', 'info');
+                        addLog('Request declined', 'info');
                         fetchUsers();
                         if (activeChatUserId && usersCache.find(u => u.request_id === requestId)?.id === activeChatUserId) {
                             closeActiveChat();
@@ -353,34 +475,25 @@
                 }
             };
 
-            // Chat room handling
+            // Switch to chat partner
             window.startChat = async (userId, name) => {
                 activeChatUserId = userId;
                 chatHeaderName.textContent = name;
-                chatHeaderStatus.textContent = 'Conversation is secure and encrypted';
-                chatForm.classList.remove('hidden');
-                renderUsersList(); // Update active selection style
+                chatHeaderAvatar.textContent = name.substring(0, 2).toUpperCase();
                 
-                chatMessagesContainer.innerHTML = '<div class="text-center text-xs text-gray-500 py-8 animate-pulse">Loading messages...</div>';
+                chatWelcomeState.classList.add('hidden');
+                chatActiveState.classList.remove('hidden');
+                renderUsersList(); // Update active selection
+                
+                chatMessagesContainer.innerHTML = '<div class="text-center text-xs text-gray-500 py-12 animate-pulse">Loading history...</div>';
                 
                 await fetchMessages(userId);
             };
 
             function closeActiveChat() {
                 activeChatUserId = null;
-                chatHeaderName.textContent = 'Select a Partner';
-                chatHeaderStatus.textContent = 'Pick a connected user from the directory to start';
-                chatForm.classList.add('hidden');
-                chatMessagesContainer.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-center p-8">
-                        <div class="w-12 h-12 rounded-full bg-violet-600/10 flex items-center justify-center text-violet-400 mb-3 border border-violet-500/20">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        <p class="text-xs text-gray-400 font-semibold">Connection Terminated</p>
-                    </div>
-                `;
+                chatActiveState.classList.add('hidden');
+                chatWelcomeState.classList.remove('hidden');
                 renderUsersList();
             }
 
@@ -391,41 +504,43 @@
                     if (data.success) {
                         chatMessagesContainer.innerHTML = '';
                         if (data.messages.length === 0) {
-                            chatMessagesContainer.innerHTML = '<div class="text-center text-xs text-gray-600 py-8">Connected! Write a message to begin.</div>';
+                            chatMessagesContainer.innerHTML = '<div class="text-center text-xs text-gray-600 py-12">No messages yet. Send a message to start conversation!</div>';
                         } else {
                             data.messages.forEach(msg => appendMessage(msg, true));
                         }
                     } else {
-                        chatMessagesContainer.innerHTML = `<div class="text-center text-xs text-rose-500 py-8">${data.message}</div>`;
+                        chatMessagesContainer.innerHTML = `<div class="text-center text-xs text-rose-500 py-12">${data.message}</div>`;
                     }
                 } catch (e) {
-                    chatMessagesContainer.innerHTML = '<div class="text-center text-xs text-rose-500 py-8">Failed to load message history</div>';
+                    chatMessagesContainer.innerHTML = '<div class="text-center text-xs text-rose-500 py-12">Failed to retrieve message logs</div>';
                 }
             }
 
             function appendMessage(msg, isHistory = false) {
                 const isMe = msg.sender_id === authUserId;
-                const messageEl = document.createElement('div');
-                messageEl.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1 ${isHistory ? '' : 'message-animate'}`;
+                const messageWrapper = document.createElement('div');
+                messageWrapper.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1 ${isHistory ? '' : 'message-animate'}`;
                 
                 const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const bubbleBg = isMe ? 'bg-violet-600/20 border-violet-500/20 text-gray-100' : 'bg-white/5 border-white/5 text-gray-200';
+                const bubbleStyle = isMe 
+                    ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-2xl rounded-tr-none shadow-sm' 
+                    : 'bg-white/5 border border-white/5 text-gray-200 rounded-2xl rounded-tl-none shadow-sm';
                 
-                messageEl.innerHTML = `
-                    <span class="text-[8px] text-gray-500 px-1">${time}</span>
-                    <div class="border rounded-2xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'} px-3.5 py-2 text-xs max-w-[85%] break-words leading-relaxed shadow-sm ${bubbleBg}">
+                messageWrapper.innerHTML = `
+                    <span class="text-[8px] text-gray-500 px-1.5">${time}</span>
+                    <div class="px-4 py-2.5 text-xs max-w-[80%] break-words leading-relaxed ${bubbleStyle}">
                         ${escapeHtml(msg.message)}
                     </div>
                 `;
-                chatMessagesContainer.appendChild(messageEl);
+                chatMessagesContainer.appendChild(messageWrapper);
                 chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
             }
 
-            // Send message submit
+            // Submit message Form
             chatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const text = inputMessage.value.trim();
-                if (!text || !activeChatUserId) return;
+                const messageVal = inputMessage.value.trim();
+                if (!messageVal || !activeChatUserId) return;
 
                 inputMessage.disabled = true;
                 btnSendMessage.disabled = true;
@@ -440,17 +555,17 @@
                         },
                         body: JSON.stringify({
                             receiver_id: activeChatUserId,
-                            message: text
+                            message: messageVal
                         })
                     });
                     const data = await res.json();
                     if (data.success) {
                         inputMessage.value = '';
                         appendMessage(data.message);
-                        addLog('Private message sent', 'success');
+                        addLog('Message sent', 'success');
                     }
                 } catch (e) {
-                    addLog('Error sending message', 'error');
+                    addLog('Failed to transmit message', 'error');
                 } finally {
                     inputMessage.disabled = false;
                     btnSendMessage.disabled = false;
@@ -465,7 +580,7 @@
                 return temp.innerHTML;
             }
 
-            // Reverb WebSockets Initialize via Vite
+            // Reverb WebSockets Hooks via Vite
             try {
                 if (window.Echo) {
                     addLog('[WS] Reverb WebSockets active via compiled assets.', 'info');
@@ -515,7 +630,7 @@
                 addLog(`[WS] Failed to initialize: ${e.message}`, 'error');
             }
 
-            // Init loads
+            // Init directory load
             fetchUsers();
         });
     </script>
